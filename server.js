@@ -102,7 +102,7 @@ app.get('/jcp/search', async (req, res) => {
 
 // Catch-all: serve React app for any non-API route
 if (process.env.NODE_ENV === 'production') {
-  app.get('*', (req, res) => {
+  app.get('/{*path}', (req, res) => {
     res.sendFile(join(__dirname, 'dist', 'index.html'));
   });
 }
