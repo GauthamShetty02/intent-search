@@ -3,6 +3,9 @@ import cors from 'cors';
 import Groq from 'groq-sdk';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { config } from 'dotenv';
+
+config();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
