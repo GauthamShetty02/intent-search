@@ -1,4 +1,4 @@
-const RAG_API = 'http://localhost:8001';
+const RAG_API = import.meta.env.DEV ? 'http://localhost:8001' : '';
 
 export async function parseIntent(query) {
   const res = await fetch(`${RAG_API}/intent/parse`, {
