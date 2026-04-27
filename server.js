@@ -19,6 +19,21 @@ if (process.env.NODE_ENV === 'production') {
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+// Real JCPenney category taxonomy
+const JCP_CATEGORIES = {
+  "Women's Clothing":  ["t-shirts","blouses","tunic tops","tank tops","camisoles","crop top","pullover sweaters","cardigans","sweatshirts","hoodies","fit + flare dresses","a-line dresses","maxi dresses","sheath dresses","wrap dresses","sundresses","bodycon dresses","shirt dresses","swing dresses","party dresses","evening gowns","ball gowns","straight leg jeans","skinny jeans","bootcut jeans","flare jeans","boyfriend jeans","cropped jeans","jeggings","pull-on pants","cargo pants","palazzo pants","trousers","capri pants","jogger pants","leggings","yoga pants","a-line skirts","maxi skirts","pencil skirts","blazers","denim jackets","bomber jackets","trench coats","full coverage bras","sports bras","bralettes","pajama sets","robes","nightgowns","one piece swimsuits","bikini","tankinis","rompers","jumpsuits"],
+  "Men's Clothing":    ["dress shirts","button-down shirts","polo shirts","graphic t-shirts","t-shirts","henley shirts","flannel shirts","pullover sweaters","cardigans","quarter-zip pullover","sweatshirts","hoodies","straight leg jeans","slim fit jeans","relaxed fit jeans","cargo pants","flat front pants","trousers","chino shorts","cargo shorts","swim shorts","suit jackets","suit pants","blazers","sport coats","suit sets","tuxedos","denim jackets","bomber jackets","fleece jackets","boxer briefs","pajama sets","track suits","jogger pants","workout shorts"],
+  "Kids & Baby":       ["graphic t-shirts","t-shirts","hoodies","sweatshirts","pajama sets","kids pajama sets","one piece pajamas","dresses","leggings","jeans","shorts","pants","layette sets","bibs","footed pajamas","romper sets","sneakers","baby booties"],
+  "Shoes":             ["sneakers","running shoes","slip-on shoes","loafers","oxford shoes","boat shoes","work shoes","ballet flats","clogs","heeled sandals","flat sandals","wedge sandals","slide sandals","flip-flops","dress boots","ankle boots","chelsea boots","cowboy boots","winter boots","combat boots","booties","pumps","mules"],
+  "Home & Bedding":    ["comforter sets","sheet sets","duvet cover sets","quilt sets","bed pillows","throw pillows","blankets","throws","coverlets","curtain panels","valances","area rugs","accent rugs","runners","bath towel sets","bath towels","hand towels","shower curtains","kitchen towels","placemats","tablecloths"],
+  "Furniture":         ["accent chairs","recliners","ottomans","benches","accent tables","nightstands","desks","dining chairs","dining tables","bar stools","bookcases","headboards","beds","office chairs","kitchen islands"],
+  "Jewelry & Accessories": ["drop earrings","hoop earrings","collar necklaces","bracelet watches","strap watches","crossbody bags","evening bags","backpacks","wallets","clutches","belts","scarves","gloves","sunglasses","bow ties","ties","cufflinks"],
+  "Sports & Active":   ["sports bras","yoga pants","workout pants","workout shorts","running shoes","sneakers","athletic jackets","compression socks","swim shirts","rash guards","track suits","basketball shorts","golf shorts","bike shorts"],
+  "Kitchen & Dining":  ["cookware sets","skillets","frying pans","sauce pans","dutch ovens","bakeware sets","knife sets","dinnerware sets","coffee mugs","tumblers","water bottles","air fryers","slow cookers","stand mixers","blenders","toasters","cutting boards","pot holders"],
+};
+
+const ALL_JCP_TERMS = Object.values(JCP_CATEGORIES).flat();
+
 // ── INTENT PARSER ─────────────────────────────────────────────────────────────
 app.post('/intent/parse', async (req, res) => {
   try {
@@ -26,34 +41,37 @@ app.post('/intent/parse', async (req, res) => {
     const completion = await groq.chat.completions.create({
       model: 'llama-3.1-8b-instant',
       temperature: 0.1,
-      max_tokens: 256,
+      max_tokens: 300,
       messages: [{
         role: 'system',
-        content: `You are a smart shopping intent parser with deep contextual reasoning.
+        content: `You are a smart shopping intent parser for JCPenney.
 
-You must infer hidden intent from context clues:
-- Destinations → infer climate/activity: "Goa", "Miami", "Maldives" = beach trip → sunglasses, swimwear, sandals, sunscreen, linen
-- "Shimla", "Manali", "Alps" = cold/snow trip → jackets, thermals, boots, gloves
-- "office", "interview", "meeting" = formal → blazer, trousers, formal shoes
-- "party", "club", "wedding" = dressy → evening wear, heels, accessories
-- "gym", "trek", "hiking" = active → sportswear, sneakers, backpack
-- Seasons: "summer" = light fabrics, "monsoon" = waterproof, "winter" = warm layers
-- Vague intent like "trip to Goa" should expand to ALL relevant beach categories
+Infer hidden intent from context:
+- "Goa", "Miami", "Maldives", "beach" → sunglasses, flip-flops, swim shorts, bikini, sundresses, flat sandals
+- "Shimla", "Manali", "snow", "winter" → winter boots, pullover sweaters, fleece jackets, trench coats
+- "office", "interview", "work" → dress shirts, blazers, trousers, oxford shoes, suit sets
+- "party", "club", "wedding", "formal" → party dresses, evening gowns, heeled sandals, suit jackets, tuxedos
+- "gym", "workout", "running" → sports bras, yoga pants, running shoes, workout shorts
+- "baby", "newborn", "toddler" → layette sets, footed pajamas, bibs, baby booties
+- "home", "bedroom", "living room" → comforter sets, throw pillows, curtain panels, area rugs
+- "kitchen", "cooking" → cookware sets, knife sets, air fryers, dinnerware sets
 
-Return ONLY valid JSON (no markdown, no explanation):
+You MUST pick keywords ONLY from this JCPenney product list:
+${ALL_JCP_TERMS.join(', ')}
+
+Return ONLY valid JSON (no markdown):
 {
   "category": string,
   "color": string,
   "occasion": string,
   "budget": { "max": number, "currency": string },
-  "vibe": string,
   "gender": string,
   "keywords": string[],
   "inferred_context": string
 }
 
-"keywords" must include ALL inferred product types (e.g. ["sunglasses", "swimwear", "sandals", "linen shirt", "beach bag"])
-"inferred_context" should be a short human-readable explanation like "Beach destination — warm, sunny, outdoor activities"`
+"keywords" must be 3-6 items picked ONLY from the JCPenney product list above.
+"inferred_context" is a short explanation like "Beach destination — warm, sunny, outdoor activities".`
       }, {
         role: 'user',
         content: query
