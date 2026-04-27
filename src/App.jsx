@@ -83,12 +83,14 @@ export default function App() {
     try {
       const parsed = await parseIntent(q);
       setIntent(parsed);
-      // Auto-select first keyword
       if (parsed.keywords?.length) {
         await fetchKeyword(parsed.keywords[0]);
       }
+      // if keywords empty, UI will show not-available message
     } catch (e) {
-      setError("Could not parse intent. Try a different query.");
+      // Intent parse failed entirely — still try a direct search
+      setIntent({ inferred_context: null, keywords: [q] });
+      await fetchKeyword(q);
     } finally {
       setIntentLoading(false);
     }
@@ -248,8 +250,16 @@ export default function App() {
 
       {!productsLoading && searched && products.length === 0 && !error && intent && (
         <div className="no-results">
-          <p>😕 No products found for "{activeKeyword}".</p>
-          <p className="no-results-hint">Try selecting a different category above.</p>
+          {intent.keywords?.length === 0
+            ? <>
+                <p>🚫 This item is not available at JCPenney.</p>
+                <p className="no-results-hint">JCPenney sells clothing, shoes, home, jewelry, kids & kitchen items.</p>
+              </>
+            : <>
+                <p>😕 No products found for "{activeKeyword}".</p>
+                <p className="no-results-hint">Try selecting a different category above.</p>
+              </>
+          }
         </div>
       )}
 
